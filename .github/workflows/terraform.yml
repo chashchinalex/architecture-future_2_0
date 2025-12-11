@@ -4,12 +4,12 @@ on:
   push:
     branches: [ main ]
   pull_request:
-  workflow_dispatch: {}  # позволяет вручную запускать workflow
+  workflow_dispatch: {}  # ручной запуск из Actions
 
 env:
   TF_VERSION: '1.5.7'
   TF_ROOT: 'Task2Advanced'
-  TF_ENV: 'dev'  # можно заменить на ${{ secrets.TF_ENV }} или репо-variable
+  TF_ENV: dev   # здесь задаём окружение один раз
 
 jobs:
   terraform_validate:
@@ -49,7 +49,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-      TF_ENV: ${{ env.TF_ENV }}
+      # TF_ENV здесь НЕ переопределяем — он уже есть из общего env
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -80,8 +80,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: terraform_plan
     if: github.ref == 'refs/heads/main'
+    # Можно привязать к GitHub Environment 'dev'
     environment:
-      name: ${{ env.TF_ENV }}  # используйте environments GitHub для ручного approval
+      name: dev   # или создайте в Settings → Environments окружение dev
     defaults:
       run:
         working-directory: ${{ env.TF_ROOT }}
@@ -93,7 +94,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-      TF_ENV: ${{ env.TF_ENV }}
+      # TF_ENV также не задаём — он берётся сверху
     steps:
       - name: Checkout
         uses: actions/checkout@v4
