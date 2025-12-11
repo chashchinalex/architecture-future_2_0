@@ -2,10 +2,10 @@ terraform {
   required_version = ">= 1.0.0, < 2.0.0"
 
   backend "s3" {
-    endpoint                   = "https://storage.yandexcloud.net"
-    bucket                     = "my-terraform-state-ch"
-    region                     = "ru-central1"
-    key                        = "dev/terraform.tfstate"
+    endpoint                    = "https://storage.yandexcloud.net"
+    bucket                      = "my-terraform-state-ch"
+    region                      = "ru-central1"
+    key                         = "dev/terraform.tfstate"
     skip_region_validation      = true
     skip_credentials_validation = true
     force_path_style            = true
@@ -26,11 +26,11 @@ provider "yandex" {
 module "vm" {
   source = "./modules/vm"
 
-  name          = var.name
-  zone          = var.zone
-  platform_id   = var.platform_id
-  cores         = var.cores
-  memory        = var.memory
+  name        = var.name
+  zone        = var.zone
+  platform_id = var.platform_id
+  cores       = var.cores
+  memory      = var.memory
 
   boot_disk_size = var.boot_disk_size
   boot_disk_type = var.boot_disk_type
