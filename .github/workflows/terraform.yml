@@ -1,0 +1,142 @@
+name: Terraform CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch: {}
+
+env:
+  TF_VERSION: '1.5.7'
+  TF_ROOT: 'Task2Advanced'
+  TF_ENV: dev
+
+jobs:
+  terraform_validate:
+    runs-on: ubuntu-latest
+    env:
+      # маппинг ваших секретов S3_* в AWS_*
+      AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.S3_REGION }}
+      # при необходимости можно пробросить профиль
+      AWS_PROFILE: ${{ secrets.AWS_PROFILE }}
+      # секреты Yandex Cloud (если используются провайдером)
+      YC_TOKEN: ${{ secrets.YC_TOKEN }}
+      YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
+      YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
+      YC_ZONE: ${{ secrets.YC_ZONE }}
+      # опционально – если решите использовать backend-config
+      S3_BUCKET: ${{ secrets.S3_BUCKET }}
+      S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      # здесь вы только проверяете код, backend можно не трогать
+      - name: Terraform init (no backend)
+        run: terraform init -backend=false -input=false
+        working-directory: ${{ env.TF_ROOT }}
+
+      - name: Terraform fmt
+        run: terraform fmt -check
+        working-directory: ${{ env.TF_ROOT }}
+
+      - name: Terraform validate
+        run: terraform validate
+        working-directory: ${{ env.TF_ROOT }}
+
+  terraform_plan:
+    runs-on: ubuntu-latest
+    needs: terraform_validate
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.S3_REGION }}
+      AWS_PROFILE: ${{ secrets.AWS_PROFILE }}
+      YC_TOKEN: ${{ secrets.YC_TOKEN }}
+      YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
+      YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
+      YC_ZONE: ${{ secrets.YC_ZONE }}
+      S3_BUCKET: ${{ secrets.S3_BUCKET }}
+      S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform init (with backend)
+        run: terraform init -input=false
+        # если захотите переопределять bucket/endpoint из секретов, можно так:
+        # run: |
+        #   terraform init -input=false \
+        #     -backend-config="bucket=${S3_BUCKET}" \
+        #     -backend-config="endpoint=${S3_ENDPOINT}"
+        working-directory: ${{ env.TF_ROOT }}
+
+      - name: Terraform plan
+        run: terraform plan -input=false -var-file="envs/${TF_ENV}.tfvars" -out="tfplan"
+        working-directory: ${{ env.TF_ROOT }}
+
+      - name: Save plan to text
+        run: terraform show -no-color tfplan > plan.txt
+        working-directory: ${{ env.TF_ROOT }}
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: |
+            ${{ env.TF_ROOT }}/tfplan
+            ${{ env.TF_ROOT }}/plan.txt
+
+  terraform_apply:
+    runs-on: ubuntu-latest
+    needs: terraform_plan
+    if: github.ref == 'refs/heads/main'
+    # окружение GitHub для approval перед apply
+    environment:
+      name: dev
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.S3_REGION }}
+      AWS_PROFILE: ${{ secrets.AWS_PROFILE }}
+      YC_TOKEN: ${{ secrets.YC_TOKEN }}
+      YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
+      YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
+      YC_ZONE: ${{ secrets.YC_ZONE }}
+      S3_BUCKET: ${{ secrets.S3_BUCKET }}
+      S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ env.TF_ROOT }}
+
+      - name: Terraform init (with backend)
+        run: terraform init -input=false
+        # аналогично, при желании можно добавить backend-config с S3_BUCKET/S3_ENDPOINT
+        working-directory: ${{ env.TF_ROOT }}
+
+      - name: Terraform apply
+        run: terraform apply -input=false tfplan
+        working-directory: ${{ env.TF_ROOT }}
