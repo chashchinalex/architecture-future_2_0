@@ -1,0 +1,60 @@
+stages:
+  - validate
+  - plan
+  - apply
+
+variables:
+  TF_VERSION: "1.5.7"
+  TF_ROOT: "Task2Advanced"
+  TF_ENV: "dev"
+
+default:
+  image: hashicorp/terraform:${TF_VERSION}
+  before_script:
+    - cd ${TF_ROOT}
+    - terraform version
+
+terraform_validate:
+  stage: validate
+  script:
+    - terraform init -backend=false
+    - terraform fmt -check
+    - terraform validate
+  rules:
+    - if: '$CI_COMMIT_BRANCH'
+      when: always
+
+terraform_plan:
+  stage: plan
+  needs:
+    - terraform_validate
+  script:
+    - terraform init -input=false
+    - terraform plan -input=false -var-file="envs/${TF_ENV}.tfvars" -out="tfplan"
+    - terraform show -no-color tfplan > plan.txt
+  artifacts:
+    paths:
+      - ${TF_ROOT}/tfplan
+      - ${TF_ROOT}/plan.txt
+    expire_in: 1 day
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: always
+    - if: '$CI_COMMIT_BRANCH != "main"'
+      when: manual
+      allow_failure: true
+
+terraform_apply:
+  stage: apply
+  needs:
+    - terraform_plan
+  script:
+    - terraform init -input=false
+    - terraform apply -input=false tfplan
+  environment:
+    name: $TF_ENV
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+      allow_failure: false
+    - when: never

@@ -1,0 +1,85 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/refs/heads/master/C4_Container.puml
+
+title C4 Container Diagram - Целевая архитектура "Future 2.0" (3 года)
+
+
+Person(patient, "Пациент", "Использует мобильное приложение или веб-портал")
+Person(doctor, "Врач", "Работает в медицинской системе клиники")
+Person(analyst, "Бизнес-аналитик", "Использует портал самообслуживания для отчетов")
+
+
+System_Ext(pharma, "Фарм-партнеры", "Системы поставщиков и партнеров")
+System_Ext(iot, "Производители MedTech", "Умные устройства и оборудование")
+
+
+System_Boundary(cloud, "Cloud Infrastructure (Целевая платформа)") {
+
+    Container(api_gateway, "API Gateway", "Kong / Nginx", "Маршрутизация, AuthN/AuthZ, Rate Limiting")
+
+
+    Boundary(domain_med, "Домен: Медицина") {
+        Container(med_ui, "Med Web Portal", "React / Angular", "Веб-интерфейс (замена PowerBuilder)")
+        Container(med_app, "Medical Core Service", "Java / Kotlin", "Управление приемами, пациентами, медкартами")
+        ContainerDb(med_db, "Medical DB", "PostgreSQL", "Операционные данные (OLTP)")
+    }
+
+
+    Boundary(domain_fin, "Домен: Финтех") {
+        Container(fin_core, "Fintech Service", "Go / Java", "Банкинг, процессинг, счета, кредиты")
+        ContainerDb(fin_db, "Fintech DB", "PostgreSQL / CockroachDB", "Транзакционные данные (Strong Consistency)")
+    }
+
+
+    Boundary(domain_ai, "Домен: ИИ-сервисы") {
+        Container(ai_engine, "AI Diagnostic Engine", "Python (PyTorch/TF)", "Анализ снимков и истории болезней")
+        ContainerDb(ai_store, "Vector & Blob Store", "Milvus / S3", "Хранение векторов и сырых медицинских снимков")
+    }
+
+
+    Boundary(integration, "Event Backbone") {
+        Container(event_bus, "Event Bus", "Apache Kafka / Redpanda", "Асинхронный обмен событиями между доменами")
+        Container(schema_reg, "Schema Registry", "Registry", "Контракты данных (Avro/Protobuf)")
+    }
+
+
+    Boundary(data_platform, "Платформа Данных") {
+        Container(ingest, "Stream Ingestion", "Kafka Connect / Flink", "CDC-захват изменений и загрузка событий")
+        ContainerDb(data_lake, "Data Lakehouse", "S3 + Delta Lake / Iceberg", "Сырые данные, очищенные слои (Gold/Silver)")
+        Container(catalog, "Data Catalog", "DataHub / Amundsen", "Каталог данных, метаданные, управление доступом")
+        Container(bi_tool, "Self-Service BI", "Superset / PowerBI", "Визуализация и построение отчетов")
+    }
+}
+
+
+Rel(patient, api_gateway, "HTTPS / REST", "Запись, оплата, просмотр")
+Rel(doctor, api_gateway, "HTTPS / REST", "Ведение приема")
+
+
+Rel(api_gateway, med_ui, "Proxy")
+Rel(med_ui, med_app, "gRPC / REST", "Команды")
+
+
+Rel(med_app, med_db, "JDBC/R2DBC", "Read/Write")
+Rel(med_app, event_bus, "Publishes: DiagnosisCreated, PatientRegistered")
+
+
+Rel(fin_core, fin_db, "JDBC", "Read/Write Transactional")
+Rel(fin_core, event_bus, "Subscribes: DiagnosisCreated\nPublishes: PaymentSuccess")
+
+
+Rel(ai_engine, ai_store, "S3 API", "Load Images")
+Rel(ai_engine, event_bus, "Subscribes: ImageUploaded\nPublishes: RiskScoreCalculated")
+
+
+Rel(ingest, event_bus, "Consumes Topics", "CDC & Events")
+Rel(ingest, data_lake, "Writes", "Parquet/Delta")
+Rel(bi_tool, data_lake, "SQL Queries", "Trino/Presto")
+Rel(analyst, bi_tool, "Просмотр дашбордов")
+Rel(analyst, catalog, "Поиск датасетов")
+
+
+Rel(pharma, api_gateway, "API Call", "Заказ лекарств")
+Rel(iot, event_bus, "MQTT Proxy -> Kafka", "Телеметрия")
+
+@enduml

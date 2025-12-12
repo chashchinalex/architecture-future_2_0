@@ -1,0 +1,98 @@
+@startuml
+' Подключаем C4, как требовалось, но сбрасываем стили, мешающие Sequence Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Event Flow (Event Storming View) - Future 2.0
+
+skinparam sequenceMessageAlign center
+hide footbox
+skinparam boxPadding 10
+
+' Макросы для упрощения создания участников
+!define AGGREGATE(x) participant x as "Aggregate" #LightYellow
+!define POLICY(x) participant x as "Policy" #LightPink
+
+' Определяем участников (Агрегаты)
+box "Medical Context" #WhiteSmoke
+    AGGREGATE(Patient)
+    AGGREGATE(Visit)
+end box
+
+box "AI Context" #FloralWhite
+    AGGREGATE(AI_Engine)
+end box
+
+box "Fintech Context" #Honeydew
+    AGGREGATE(Invoice)
+    AGGREGATE(Account)
+end box
+
+' --- Flow ---
+
+== Этап 1: Регистрация ==
+actor "Пациент/Врач" as User
+
+User -> Patient : **Command:** RegisterPatient
+activate Patient
+Patient -> Patient : Validate Data
+
+' Объявляем событие (создаем participant)
+participant "PatientRegistered" as Evt_PatientReg #Orange
+
+' Отправляем сообщение к событию
+Patient -->> Evt_PatientReg : **Event:** PatientRegistered
+deactivate Patient
+
+' Событие триггерит Политику/Агрегат
+Evt_PatientReg -->> Account : **Policy:** Create Wallet
+activate Account
+
+participant "WalletCreated" as Evt_WalletCreated #Orange
+Account -->> Evt_WalletCreated : **Event:** WalletCreated
+deactivate Account
+
+== Этап 2: Диагностика (AI) ==
+User -> Visit : **Command:** StartVisit
+activate Visit
+
+participant "VisitStarted" as Evt_VisitStarted #Orange
+Visit -->> Evt_VisitStarted : **Event:** VisitStarted
+
+User -> Visit : **Command:** UploadImage
+
+participant "MedicalImageUploaded" as Evt_ImgUpload #Orange
+Visit -->> Evt_ImgUpload : **Event:** MedicalImageUploaded
+
+Evt_ImgUpload -->> AI_Engine : **Policy:** Analyze Image
+activate AI_Engine
+AI_Engine -> AI_Engine : Inference Model...
+
+participant "AIAnalysisCompleted" as Evt_AIComplete #Orange
+AI_Engine -->> Evt_AIComplete : **Event:** AIAnalysisCompleted
+deactivate AI_Engine
+
+Evt_AIComplete -->> Visit : Update Medical Record
+Visit -> Visit : Doctor Confirms Diagnosis
+
+participant "DiagnosisConfirmed" as Evt_DiagConf #Orange
+Visit -->> Evt_DiagConf : **Event:** DiagnosisConfirmed
+deactivate Visit
+
+== Этап 3: Биллинг и Оплата ==
+Evt_DiagConf -->> Invoice : **Policy:** Issue Invoice
+activate Invoice
+Invoice -> Invoice : Calculate Amount
+
+participant "InvoiceIssued" as Evt_InvIssued #Orange
+Invoice -->> Evt_InvIssued : **Event:** InvoiceIssued
+deactivate Invoice
+
+User -> Invoice : **Command:** PayInvoice
+Invoice -> Account : Check Balance
+Account -->> Invoice : Funds Available
+
+participant "PaymentSucceeded" as Evt_PaySuccess #Orange
+Invoice -->> Evt_PaySuccess : **Event:** PaymentSucceeded
+deactivate Invoice
+
+@enduml
