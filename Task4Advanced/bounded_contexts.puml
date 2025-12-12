@@ -1,0 +1,40 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/refs/heads/master/C4_Container.puml
+
+title Bounded Context Map - Future 2.0 (DDD View)
+
+System_Boundary(med_domain, "Medical Domain (Core)") {
+    Container(med_ctx, "Medical Records Context", "Java/Spring", "Управление приемами, историей болезни, диагнозами")
+}
+
+System_Boundary(fin_domain, "Fintech Domain (Core)") {
+    Container(fin_ctx, "Billing & Payments Context", "Go", "Счета, транзакции, банковские продукты, кредиты")
+}
+
+System_Boundary(ai_domain, "AI Domain (Generic)") {
+    Container(ai_ctx, "Diagnostics Context", "Python", "Обработка снимков, ML-модели")
+}
+
+System_Boundary(support_domain, "Supporting Subdomains") {
+    Container(iam_ctx, "Identity & Access Context", "Keycloak", "Аутентификация и управление правами")
+    Container(analytics_ctx, "Analytics Context", "Data Mesh", "Сбор данных и построение отчетов")
+}
+
+System_Ext(iot, "IoT Medical Devices", "Устройства сбора телеметрии")
+System_Ext(pharma, "Pharma Suppliers", "Поставщики лекарств")
+
+Rel_D(iam_ctx, med_ctx, "AuthN/AuthZ", "Conformist")
+Rel_D(iam_ctx, fin_ctx, "AuthN/AuthZ", "Conformist")
+
+Rel_R(med_ctx, fin_ctx, "Triggers Billing", "DiagnosisCreated Event")
+
+Rel_D(med_ctx, ai_ctx, "Request Analysis", "gRPC / Event")
+Rel_U(ai_ctx, med_ctx, "Analysis Result", "AIAnalysisCompleted Event")
+
+Rel_L(med_ctx, analytics_ctx, "Data Flow", "Streams")
+Rel_L(fin_ctx, analytics_ctx, "Data Flow", "Streams")
+
+Rel_D(iot, med_ctx, "Telemetry", "MQTT")
+Rel_U(pharma, fin_ctx, "Invoicing", "API")
+
+@enduml

@@ -1,0 +1,49 @@
+@startgantt
+title Роадмап внедрения Data Mesh (3 года)
+
+printscale quarterly
+Project starts 2025-01-01
+
+skinparam ganttBarHeight 25
+
+[Формирование Platform Team] starts 2025-01-01
+[Формирование Platform Team] lasts 90 days
+[Формирование Platform Team] is colored in DeepSkyBlue
+
+[Развертывание Data Lake] starts 2025-02-01
+[Развертывание Data Lake] lasts 120 days
+[Развертывание Data Lake] is colored in DeepSkyBlue
+
+[Внедрение Kafka и Registry] starts 2025-03-01
+[Внедрение Kafka и Registry] lasts 120 days
+[Внедрение Kafka и Registry] is colored in DeepSkyBlue
+
+[Пилот: Финтех и CDC] starts 2025-05-01
+[Пилот: Финтех и CDC] lasts 150 days
+[Пилот: Финтех и CDC] is colored in MediumSeaGreen
+
+[Запуск первой витрины BI] starts 2025-08-01
+[Запуск первой витрины BI] lasts 90 days
+[Запуск первой витрины BI] is colored in MediumSeaGreen
+
+[Подключение домена Медицина] starts 2025-11-01
+[Подключение домена Медицина] lasts 240 days
+[Подключение домена Медицина] is colored in Gold
+
+[Подключение домена ИИ] starts 2026-01-01
+[Подключение домена ИИ] lasts 210 days
+[Подключение домена ИИ] is colored in Gold
+
+[Внедрение Data Catalog] starts 2026-03-01
+[Внедрение Data Catalog] lasts 210 days
+[Внедрение Data Catalog] is colored in MediumPurple
+
+[Полное самообслуживание] starts 2026-09-01
+[Полное самообслуживание] lasts 300 days
+[Полное самообслуживание] is colored in MediumPurple
+
+[Вывод из эксплуатации Legacy] starts 2027-06-01
+[Вывод из эксплуатации Legacy] lasts 180 days
+[Вывод из эксплуатации Legacy] is colored in FireBrick
+
+@endgantt
